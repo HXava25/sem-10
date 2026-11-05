@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Productos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 2rem;
+      color: #f8fafc;
+    }
+    h1 span { color: #818cf8; }
+
+    /* ── Formulario ── */
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid #334155;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: #94a3b8;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 0.3rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #818cf8;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: #818cf8;
+      color: #0f172a;
+    }
+    .btn-primary:hover { background: #6366f1; }
+
+    .btn-secondary {
+      background: #334155;
+      color: #e2e8f0;
+    }
+    .btn-secondary:hover { background: #475569; }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+    }
+    .btn-danger:hover { background: #dc2626; }
+
+    .btn-edit {
+      background: #f59e0b;
+      color: #0f172a;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+    }
+    .btn-edit:hover { background: #d97706; }
+
+    /* ── Toast / Notificación ── */
+    .toast {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      padding: 0.8rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transform: translateX(120%);
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: #059669; color: #fff; }
+    .toast.error   { background: #dc2626; color: #fff; }
+
+    /* ── Tabla ── */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.7rem 0.8rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      border-bottom: 1px solid #334155;
+    }
+
+    td {
+      padding: 0.7rem 0.8rem;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    tr:hover td { background: #1e293b; }
+
+    .empty-msg {
+      text-align: center;
+      color: #64748b;
+      padding: 2rem;
+      font-style: italic;
+    }
+
+    .actions { display: flex; gap: 0.4rem; }
+
+    .price { color: #34d399; font-weight: 600; }
+    .stock-zero { color: #f87171; }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #64748b;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>📦 Gestión de <span>Productos</span></h1>
+
+    <!-- Formulario -->
+    <div class="card">
+      <h2 id="form-title">Agregar producto</h2>
+      <form id="product-form">
+        <input type="hidden" id="edit-id">
+        <div class="form-grid">
+          <div>
+            <label for="name">Nombre *</label>
+            <input type="text" id="name" placeholder="Ej: Teclado mecánico" required maxlength="120">
+          </div>
+          <div>
+            <label for="price">Precio *</label>
+            <input type="number" id="price" placeholder="0.00" required min="0" max="99999999.99" step="0.01">
+          </div>
+          <div>
+            <label for="stock">Stock</label>
+            <input type="number" id="stock" placeholder="0" min="0" step="1" value="0">
+          </div>
+          <div>
+            <label for="description">Descripción</label>
+            <input type="text" id="description" placeholder="Opcional">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn-primary" id="btn-submit">Guardar producto</button>
+          <button type="button" class="btn-secondary" id="btn-cancel" style="display:none" onclick="cancelEdit()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de productos -->
+    <div class="card">
+      <h2>Productos registrados</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="products-body">
+            <tr><td colspan="6" class="loading">Cargando productos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = '/api/products';
+    const form = document.getElementById('product-form');
+    const tbody = document.getElementById('products-body');
+    const toast = document.getElementById('toast');
+    const formTitle = document.getElementById('form-title');
+    const btnSubmit = document.getElementById('btn-submit');
+    const btnCancel = document.getElementById('btn-cancel');
+    const editIdInput = document.getElementById('edit-id');
+
+    // ── Toast ──
+    function showToast(message, type = 'success') {
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
+
+    // ── Cargar productos ──
+    async function loadProducts() {
+      try {
+        const res = await fetch(API);
+        const products = await res.json();
+        if (products.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No hay productos. ¡Agrega el primero!</td></tr>';
+          return;
+        }
+        tbody.innerHTML = products.map(p => `
+          <tr>
+            <td>${p.id}</td>
+            <td>${escapeHtml(p.name)}</td>
+            <td>${p.description ? escapeHtml(p.description) : '<span style="color:#64748b">—</span>'}</td>
+            <td class="price">$${Number(p.price).toFixed(2)}</td>
+            <td class="${p.stock === 0 ? 'stock-zero' : ''}">${p.stock}</td>
+            <td class="actions">
+              <button class="btn-edit" onclick='startEdit(${JSON.stringify(p)})'>Editar</button>
+              <button class="btn-danger" onclick="deleteProduct(${p.id})">Eliminar</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg" style="color:#f87171">Error al conectar con la API. ¿Está corriendo el servidor?</td></tr>';
+      }
+    }
+
+    // ── Crear / Actualizar ──
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const body = {
+        name: document.getElementById('name').value.trim(),
+        description: document.getElementById('description').value.trim() || null,
+        price: parseFloat(document.getElementById('price').value),
+        stock: parseInt(document.getElementById('stock').value || '0', 10)
+      };
+
+      const editId = editIdInput.value;
+      const isEdit = editId !== '';
+
+      try {
+        const res = await fetch(isEdit ? `${API}/${editId}` : API, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Error al guardar', 'error');
+          return;
+        }
+
+        showToast(isEdit ? `Producto #${data.id} actualizado ✓` : `Producto #${data.id} creado ✓`);
+        form.reset();
+        document.getElementById('stock').value = '0';
+        cancelEdit();
+        loadProducts();
+      } catch (err) {
+        showToast('No se pudo conectar con la API', 'error');
+      }
+    });
+
+    // ── Editar ──
+    function startEdit(product) {
+      editIdInput.value = product.id;
+      document.getElementById('name').value = product.name;
+      document.getElementById('description').value = product.description || '';
+      document.getElementById('price').value = product.price;
+      document.getElementById('stock').value = product.stock;
+      formTitle.textContent = `Editando producto #${product.id}`;
+      btnSubmit.textContent = 'Actualizar producto';
+      btnCancel.style.display = 'inline-block';
+      form.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      editIdInput.value = '';
+      formTitle.textContent = 'Agregar producto';
+      btnSubmit.textContent = 'Guardar producto';
+      btnCancel.style.display = 'none';
+    }
+
+    // ── Eliminar ──
+    async function deleteProduct(id) {
+      if (!confirm(`¿Eliminar el producto #${id}?`)) return;
+
+      try {
+        const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Error al eliminar', 'error');
+          return;
+        }
+
+        showToast(`Producto #${id} eliminado ✓`);
+        loadProducts();
+      } catch (err) {
+        showToast('No se pudo conectar con la API', 'error');
+      }
+    }
+
+    // ── Utilidad ──
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ── Inicio ──
+    loadProducts();
+  </script>
+</body>
+</html>
+
